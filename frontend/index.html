@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102d69">
+  <title>BINUS Inventory | Campus Asset Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#dashboard" aria-label="BINUS Inventory home">
+        <span class="brand-mark">B<span>+</span></span>
+        <span class="brand-copy"><strong>BINUS</strong><small>INVENTORY</small></span>
+      </a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="side-nav" aria-label="Navigasi utama">
+        <a class="nav-item active" href="#dashboard"><span class="nav-icon">▦</span> Dashboard</a>
+        <a class="nav-item" href="#inventory"><span class="nav-icon">▤</span> Data Inventaris</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="help-card"><span class="help-icon">i</span><strong>Butuh bantuan?</strong><p>Hubungi administrator inventaris kampus untuk bantuan lebih lanjut.</p></div>
+        <div class="profile"><div class="avatar">IA</div><div class="profile-text"><strong>Inventory Admin</strong><span>Campus Operations</span></div><span class="profile-dots">···</span></div>
+      </div>
+    </aside>
+
+    <main class="main-content" id="dashboard">
+      <header class="topbar">
+        <button class="mobile-menu" id="mobileMenu" aria-label="Buka navigasi">☰</button>
+        <div class="breadcrumbs">Workspace <span>/</span> <strong>Dashboard</strong></div>
+        <div class="topbar-right"><span class="connection-dot" id="connectionDot"></span><span id="connectionLabel" class="connection-label">Mode demo</span><div class="top-avatar">IA</div></div>
+      </header>
+
+      <section class="page-heading">
+        <div><div class="eyebrow">CAMPUS OPERATIONS</div><h1>Inventory overview<span>.</span></h1><p>Kelola dan pantau aset kampus dalam satu tempat.</p></div>
+        <button class="btn btn-primary" id="addItemBtn"><span class="plus">＋</span> Tambah barang</button>
+      </section>
+
+      <section class="stats-grid" aria-label="Ringkasan inventaris">
+        <article class="stat-card"><div class="stat-top"><span>Total jenis barang</span></div><div class="stat-value" id="statTotal">—</div><div class="stat-foot">Item inventaris terdaftar</div></article>
+        <article class="stat-card"><div class="stat-top"><span>Barang tersedia</span></div><div class="stat-value" id="statAvailable">—</div><div class="stat-foot">Siap untuk digunakan</div></article>
+        <article class="stat-card"><div class="stat-top"><span>Dipinjam</span></div><div class="stat-value" id="statBorrowed">—</div><div class="stat-foot">Sedang digunakan / dipinjam</div></article>
+        <article class="stat-card"><div class="stat-top"><span>Perlu pemeriksaan</span></div><div class="stat-value" id="statMaintenance">—</div><div class="stat-foot">Perlu tindak lanjut</div></article>
+      </section>
+
+      <section class="inventory-panel" id="inventory">
+        <div class="panel-heading"><div><h2>Daftar inventaris</h2><p>Data aset dan perlengkapan kampus.</p></div><span class="record-count" id="recordCount">0 item</span></div>
+        <div class="toolbar"><label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Cari nama atau kode barang..." aria-label="Cari barang"></label><select id="categoryFilter" aria-label="Filter kategori"><option value="">Semua kategori</option><option>Elektronik</option><option>Furnitur</option><option>Laboratorium</option><option>Perlengkapan</option></select><select id="statusFilter" aria-label="Filter status"><option value="">Semua status</option><option value="available">Tersedia</option><option value="borrowed">Dipinjam</option><option value="maintenance">Perlu pemeriksaan</option></select></div>
+        <div class="table-wrap"><table><thead><tr><th>BARANG</th><th>KODE ASET</th><th>KATEGORI</th><th>LOKASI</th><th>JUMLAH</th><th>STATUS</th><th><span class="sr-only">Aksi</span></th></tr></thead><tbody id="inventoryBody"><tr><td colspan="7" class="loading-cell">Memuat data inventaris...</td></tr></tbody></table></div>
+        <div class="table-footer"><span id="tableSummary">Menampilkan data inventaris</span><span class="footer-note"><span class="tiny-dot"></span> Pembaruan data sesuai koneksi</span></div>
+      </section>
+      <footer class="page-footer"><span>© 2026 BINUS Inventory · Prototype akademik</span><span>Campus Asset Management</span></footer>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="itemModal" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-heading"><div><div class="eyebrow">INVENTORY RECORD</div><h2 id="modalTitle">Tambah barang</h2><p>Lengkapi informasi aset di bawah ini.</p></div><button class="icon-button" id="closeModal" aria-label="Tutup dialog">×</button></div>
+      <form id="itemForm" novalidate>
+        <div class="form-grid">
+          <label class="field full"><span>Nama barang <b>*</b></span><input id="itemName" name="name" maxlength="100" required placeholder="Contoh: Proyektor Epson"><small class="field-error" id="nameError"></small></label>
+          <label class="field"><span>Kode aset <b>*</b></span><input id="itemCode" name="code" maxlength="30" required placeholder="Contoh: BIN-ELE-001"><small class="field-error" id="codeError"></small></label>
+          <label class="field"><span>Kategori <b>*</b></span><select id="itemCategory" name="category" required><option value="">Pilih kategori</option><option>Elektronik</option><option>Furnitur</option><option>Laboratorium</option><option>Perlengkapan</option></select><small class="field-error" id="categoryError"></small></label>
+          <label class="field"><span>Lokasi <b>*</b></span><input id="itemLocation" name="location" maxlength="100" required placeholder="Contoh: Lab Komputer 1"><small class="field-error" id="locationError"></small></label>
+          <label class="field"><span>Jumlah <b>*</b></span><input id="itemQuantity" name="quantity" type="number" min="0" max="100000" step="1" required value="1"><small class="field-error" id="quantityError"></small></label>
+          <label class="field full"><span>Status <b>*</b></span><select id="itemStatus" name="status" required><option value="available">Tersedia</option><option value="borrowed">Dipinjam</option><option value="maintenance">Perlu pemeriksaan</option></select><small class="field-error" id="statusError"></small></label>
+        </div>
+        <div class="modal-actions"><button type="button" class="btn btn-quiet" id="cancelModal">Batal</button><button type="submit" class="btn btn-primary" id="saveItemBtn">Simpan barang</button></div>
+      </form>
+    </section>
+  </div>
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+  <div class="confirm-backdrop" id="confirmModal" hidden><section class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle"><div class="confirm-icon">!</div><h2 id="confirmTitle">Hapus barang?</h2><p id="confirmText">Data yang dihapus tidak dapat dikembalikan.</p><div class="modal-actions"><button class="btn btn-quiet" id="cancelDelete">Batal</button><button class="btn btn-danger" id="confirmDelete">Ya, hapus</button></div></section></div>
+</body>
+</html>
