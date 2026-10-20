@@ -15,47 +15,85 @@
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
       <a class="brand" href="#dashboard" aria-label="BINUS Inventory home">
-        <span class="brand-mark">B<span>+</span></span>
+        <span class="brand-mark" aria-hidden="true">B<span>+</span></span>
         <span class="brand-copy"><strong>BINUS</strong><small>INVENTORY</small></span>
       </a>
       <div class="workspace-label">WORKSPACE</div>
       <nav class="side-nav" aria-label="Navigasi utama">
-        <a class="nav-item active" href="#dashboard"><span class="nav-icon">▦</span> Dashboard</a>
-        <a class="nav-item" href="#inventory"><span class="nav-icon">▤</span> Data Inventaris</a>
+        <a class="nav-item active" href="#dashboard" data-view="dashboard" aria-current="page"><span class="nav-icon" aria-hidden="true">▦</span> Dashboard</a>
+        <a class="nav-item" href="#inventory" data-view="inventory"><span class="nav-icon" aria-hidden="true">▤</span> Data Inventaris</a>
       </nav>
       <div class="sidebar-bottom">
-        <div class="help-card"><span class="help-icon">i</span><strong>Butuh bantuan?</strong><p>Hubungi administrator inventaris kampus untuk bantuan lebih lanjut.</p></div>
-        <div class="profile"><div class="avatar">IA</div><div class="profile-text"><strong>Inventory Admin</strong><span>Campus Operations</span></div><span class="profile-dots">···</span></div>
+        <div class="help-card"><span class="help-icon">i</span><strong>Butuh bantuan?</strong><p>Pelajari cara melihat ringkasan dan mengelola inventaris kampus.</p><button class="help-link" id="sidebarHelpBtn" type="button">Lihat panduan <span aria-hidden="true">↗</span></button></div>
+        <div class="profile">
+          <button class="profile-trigger" type="button" data-account-trigger aria-label="Buka menu akun" aria-expanded="false" aria-controls="accountMenu">
+            <span class="avatar" data-profile-initials>IA</span><span class="profile-text"><strong data-profile-name>Inventory Admin</strong><span data-profile-department>Campus Operations</span></span>
+          </button>
+          <button class="profile-dots" type="button" data-account-trigger aria-label="Opsi akun" aria-expanded="false" aria-controls="accountMenu">···</button>
+        </div>
       </div>
     </aside>
 
-    <main class="main-content" id="dashboard">
+    <main class="main-content" id="mainContent">
       <header class="topbar">
         <button class="mobile-menu" id="mobileMenu" aria-label="Buka navigasi">☰</button>
-        <div class="breadcrumbs">Workspace <span>/</span> <strong>Dashboard</strong></div>
-        <div class="topbar-right"><span class="connection-dot" id="connectionDot"></span><span id="connectionLabel" class="connection-label">Mode demo</span><div class="top-avatar">IA</div></div>
+        <div class="breadcrumbs">Workspace <span>/</span> <strong id="currentPage">Dashboard</strong></div>
+        <div class="topbar-right"><button class="top-avatar" type="button" data-account-trigger aria-label="Buka menu akun" aria-expanded="false" aria-controls="accountMenu"><span data-profile-initials>IA</span></button></div>
       </header>
 
       <section class="page-heading">
-        <div><div class="eyebrow">CAMPUS OPERATIONS</div><h1>Inventory overview<span>.</span></h1><p>Kelola dan pantau aset kampus dalam satu tempat.</p></div>
+        <div><div class="eyebrow">CAMPUS OPERATIONS</div><h1 id="pageTitle" tabindex="-1">Inventory overview<span>.</span></h1><p id="pageDescription">Kelola dan pantau aset kampus dalam satu tempat.</p></div>
         <button class="btn btn-primary" id="addItemBtn"><span class="plus">＋</span> Tambah barang</button>
       </section>
 
-      <section class="stats-grid" aria-label="Ringkasan inventaris">
+      <section class="stats-grid" id="dashboardStats" aria-label="Ringkasan inventaris">
         <article class="stat-card"><div class="stat-top"><span>Total jenis barang</span></div><div class="stat-value" id="statTotal">—</div><div class="stat-foot">Item inventaris terdaftar</div></article>
         <article class="stat-card"><div class="stat-top"><span>Barang tersedia</span></div><div class="stat-value" id="statAvailable">—</div><div class="stat-foot">Siap untuk digunakan</div></article>
         <article class="stat-card"><div class="stat-top"><span>Dipinjam</span></div><div class="stat-value" id="statBorrowed">—</div><div class="stat-foot">Sedang digunakan / dipinjam</div></article>
         <article class="stat-card"><div class="stat-top"><span>Perlu pemeriksaan</span></div><div class="stat-value" id="statMaintenance">—</div><div class="stat-foot">Perlu tindak lanjut</div></article>
       </section>
 
-      <section class="inventory-panel" id="inventory">
-        <div class="panel-heading"><div><h2>Daftar inventaris</h2><p>Data aset dan perlengkapan kampus.</p></div><span class="record-count" id="recordCount">0 item</span></div>
-        <div class="toolbar"><label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Cari nama atau kode barang..." aria-label="Cari barang"></label><select id="categoryFilter" aria-label="Filter kategori"><option value="">Semua kategori</option><option>Elektronik</option><option>Furnitur</option><option>Laboratorium</option><option>Perlengkapan</option></select><select id="statusFilter" aria-label="Filter status"><option value="">Semua status</option><option value="available">Tersedia</option><option value="borrowed">Dipinjam</option><option value="maintenance">Perlu pemeriksaan</option></select></div>
+      <section class="inventory-panel" id="inventoryPanel" aria-labelledby="inventoryTitle">
+        <div class="panel-heading"><div><h2 id="inventoryTitle">Inventaris terbaru</h2><p id="inventoryDescription">Lima barang terakhir yang ditambahkan.</p></div><div class="panel-actions"><span class="record-count" id="recordCount">0 item</span><a class="view-all" id="viewAllLink" href="#inventory">Lihat semua <span aria-hidden="true">→</span></a></div></div>
+        <div class="toolbar" id="inventoryToolbar" hidden><label class="search-box"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="Cari nama, kode, atau lokasi..." aria-label="Cari barang"></label><select id="categoryFilter" aria-label="Filter kategori"><option value="">Semua kategori</option><option>Elektronik</option><option>Furnitur</option><option>Laboratorium</option><option>Perlengkapan</option></select><select id="statusFilter" aria-label="Filter status"><option value="">Semua status</option><option value="available">Tersedia</option><option value="borrowed">Dipinjam</option><option value="maintenance">Perlu pemeriksaan</option></select><button class="btn btn-quiet refresh-button" id="refreshItemsBtn" type="button">Muat ulang</button></div>
         <div class="table-wrap"><table><thead><tr><th>BARANG</th><th>KODE ASET</th><th>KATEGORI</th><th>LOKASI</th><th>JUMLAH</th><th>STATUS</th><th><span class="sr-only">Aksi</span></th></tr></thead><tbody id="inventoryBody"><tr><td colspan="7" class="loading-cell">Memuat data inventaris...</td></tr></tbody></table></div>
-        <div class="table-footer"><span id="tableSummary">Menampilkan data inventaris</span><span class="footer-note"><span class="tiny-dot"></span> Pembaruan data sesuai koneksi</span></div>
+        <div class="table-footer"><span id="tableSummary" aria-live="polite">Menampilkan data inventaris</span><span class="footer-note">Campus inventory</span></div>
       </section>
       <footer class="page-footer"><span>© 2026 BINUS Inventory · Prototype akademik</span><span>Campus Asset Management</span></footer>
     </main>
+  </div>
+
+  <div class="account-menu" id="accountMenu" hidden aria-label="Menu akun">
+    <div class="account-menu-heading"><span class="avatar" data-profile-initials>IA</span><div><strong data-profile-name>Inventory Admin</strong><span data-profile-department>Campus Operations</span></div></div>
+    <button class="account-menu-action" id="editProfileBtn" type="button"><span aria-hidden="true">♙</span><span>Profil akun<small>Atur nama dan unit kerja</small></span></button>
+    <button class="account-menu-action" id="accountHelpBtn" type="button"><span aria-hidden="true">?</span><span>Panduan singkat<small>Cara menggunakan inventaris</small></span></button>
+  </div>
+
+  <div class="modal-backdrop" id="profileModal" hidden>
+    <section class="modal account-modal" role="dialog" aria-modal="true" aria-labelledby="profileTitle" aria-describedby="profileNote">
+      <div class="modal-heading"><div><div class="eyebrow">WORKSPACE PROFILE</div><h2 id="profileTitle">Profil akun</h2><p>Sesuaikan tampilan profil Anda.</p></div><button class="icon-button" type="button" data-close-account-dialog aria-label="Tutup profil">×</button></div>
+      <div class="profile-preview"><span class="avatar" data-profile-initials>IA</span><div><strong data-profile-name>Inventory Admin</strong><span data-profile-department>Campus Operations</span></div></div>
+      <form id="profileForm">
+        <div class="form-grid">
+          <label class="field full"><span>Nama tampilan <b>*</b></span><input id="profileName" name="displayName" required minlength="2" maxlength="60" autocomplete="nickname" placeholder="Contoh: Inventory Admin"></label>
+          <label class="field full"><span>Unit / departemen <b>*</b></span><input id="profileDepartment" name="department" required minlength="2" maxlength="80" autocomplete="organization" placeholder="Contoh: Campus Operations"></label>
+        </div>
+        <p class="profile-note" id="profileNote">Profil tampilan ini disimpan di browser yang Anda gunakan.</p>
+        <div class="modal-actions"><button class="btn btn-quiet" type="button" data-close-account-dialog>Batal</button><button class="btn btn-primary" type="submit">Simpan profil</button></div>
+      </form>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="helpModal" hidden>
+    <section class="modal account-modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="modal-heading"><div><div class="eyebrow">QUICK GUIDE</div><h2 id="helpTitle">Panduan singkat</h2><p>Mulai kelola inventaris kampus.</p></div><button class="icon-button" type="button" data-close-account-dialog aria-label="Tutup panduan">×</button></div>
+      <div class="guide-list">
+        <div><span class="guide-number">1</span><div><h3>Pantau lewat Dashboard</h3><p>Lihat ringkasan status dan lima barang yang terakhir ditambahkan.</p></div></div>
+        <div><span class="guide-number">2</span><div><h3>Kelola Data Inventaris</h3><p>Cari seluruh barang, gunakan filter kategori dan status, lalu tambah, edit, atau hapus catatan inventaris.</p></div></div>
+        <div><span class="guide-number">3</span><div><h3>Sesuaikan profil</h3><p>Klik avatar atau tombol tiga titik untuk mengubah nama tampilan dan unit kerja di browser ini.</p></div></div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-quiet" type="button" data-close-account-dialog>Tutup</button><button class="btn btn-primary" id="helpInventoryBtn" type="button">Buka data inventaris</button></div>
+    </section>
   </div>
 
   <div class="modal-backdrop" id="itemModal" hidden>

@@ -10,7 +10,9 @@ Static HTML/CSS/JavaScript frontend prototype for a campus inventory application
 - `Dockerfile` — multi-stage build with an unprivileged Nginx runtime on port 8080
 
 ## Run locally without Docker
-Open `index.html` in a browser. It starts in demo mode and stores sample changes in browser `localStorage`.
+Follow the backend instructions in `../README.md`, then open `http://localhost:3000`. The Node server serves this frontend and its API together.
+
+For UI-only work, set `DEMO_MODE = true` in `script.js` and open `index.html` in a browser. That optional mode stores changes in browser `localStorage`.
 
 ## Run with Docker Compose
 This frontend Dockerfile expects a Compose service named `backend` listening on port `3000`, with API endpoints under `/api/items`. The Compose stack should expose the gateway at host port `8080`.
@@ -31,6 +33,6 @@ Open `http://localhost:8080`.
 Each item should include `id`, `name`, `code`, `category`, `location`, `quantity`, and `status`. Status values are `available`, `borrowed`, and `maintenance`. Category values are `Elektronik`, `Furnitur`, `Laboratorium`, and `Perlengkapan`.
 
 ## Connect to the real backend
-In `script.js`, set `DEMO_MODE = false` after the backend team confirms the endpoint paths and JSON contract. Requests use relative `/api` paths, so the browser uses the same origin and the Nginx proxy forwards them to the backend. No browser-side CORS configuration is needed.
+`DEMO_MODE = false` is the default in `script.js`. Requests use relative `/api` paths, so the browser uses the same origin and the Nginx proxy forwards them to the backend. No browser-side CORS configuration is needed.
 
 **Important:** demo mode uses `localStorage` and is only for frontend development. It does not demonstrate PostgreSQL persistence. For the final project, use `DEMO_MODE = false` and verify that the backend writes to PostgreSQL.

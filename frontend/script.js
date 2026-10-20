@@ -1,18 +1,19 @@
 /*
  * BINUS Inventory frontend
- * API contract assumed by this UI:
+ * API contract:
  * GET    /api/items                 -> [{ id, name, code, category, location, quantity, status }]
  * POST   /api/items                 -> created item JSON
  * PUT    /api/items/:id             -> updated item JSON (or 204)
  * DELETE /api/items/:id             -> 204 (or success JSON)
  * GET    /api/health                 -> optional health endpoint
  *
- * Set DEMO_MODE = false after the backend team confirms its API contract.
- * Demo mode uses browser localStorage only for UI development; it is NOT the required persistent database.
+ * Demo mode is optional for UI development; normal use connects to PostgreSQL through the API.
  */
 const API_BASE = '/api';
-const DEMO_MODE = true;
+const DEMO_MODE = false;
 const STORAGE_KEY = 'binus-inventory-demo-v1';
+const PROFILE_STORAGE_KEY = 'binus-inventory-profile-v1';
+const DEFAULT_PROFILE = { name: 'Inventory Admin', department: 'Campus Operations' };
 const STATUS = {
   available: { label: 'Tersedia', className: 'available' },
   borrowed: { label: 'Dipinjam', className: 'borrowed' },
@@ -32,7 +33,11 @@ const seedItems = [
 let items = [];
 let editingId = null;
 let pendingDeleteId = null;
-let apiAvailable = false;
+let loadError = '';
+let currentView = 'dashboard';
+let accountTrigger = null;
+let accountDialogTrigger = null;
+let profile = readProfile();
 let searchTerm = '';
 let categoryValue = '';
 let statusValue = '';
@@ -49,9 +54,106 @@ function saveDemoItems() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
   catch (error) { console.warn('Could not save demo items:', error); }
 }
-function setConnection(isOnline, label) {
-  $('connectionDot').classList.toggle('online', isOnline);
-  $('connectionLabel').textContent = label;
+function readProfile() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PROFILE_STORAGE_KEY));
+    if (typeof saved?.name === 'string' && saved.name.trim().length >= 2 && saved.name.length <= 60 &&
+        typeof saved?.department === 'string' && saved.department.trim().length >= 2 && saved.department.length <= 80) {
+      return { name: saved.name.trim(), department: saved.department.trim() };
+    }
+  } catch (error) { console.warn('Could not read profile:', error); }
+  return { ...DEFAULT_PROFILE };
+}
+function renderProfile() {
+  const initials = profile.name.split(/\s+/).slice(0, 2).map(word => Array.from(word)[0]).join('').toUpperCase();
+  document.querySelectorAll('[data-profile-initials]').forEach(node => { node.textContent = initials; });
+  document.querySelectorAll('[data-profile-name]').forEach(node => { node.textContent = profile.name; });
+  document.querySelectorAll('[data-profile-department]').forEach(node => { node.textContent = profile.department; });
+}
+function closeAccountMenu({ restoreFocus = false } = {}) {
+  $('accountMenu').hidden = true;
+  document.querySelectorAll('[data-account-trigger]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+  if (restoreFocus) accountTrigger?.focus();
+}
+function toggleAccountMenu(button) {
+  const menu = $('accountMenu');
+  if (!menu.hidden && accountTrigger === button) {
+    closeAccountMenu({ restoreFocus: true });
+    return;
+  }
+  closeAccountMenu();
+  accountTrigger = button;
+  button.setAttribute('aria-expanded', 'true');
+  menu.hidden = false;
+  const rect = button.getBoundingClientRect();
+  const left = Math.max(12, Math.min(rect.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 12));
+  const top = rect.bottom + menu.offsetHeight + 10 <= window.innerHeight - 12 ? rect.bottom + 10 : rect.top - menu.offsetHeight - 10;
+  menu.style.left = `${left}px`;
+  menu.style.top = `${Math.max(12, top)}px`;
+  $('editProfileBtn').focus();
+}
+function openAccountDialog(id) {
+  accountDialogTrigger = $('accountMenu').hidden ? document.activeElement : accountTrigger;
+  closeAccountMenu();
+  if (id === 'profileModal') {
+    $('profileName').value = profile.name;
+    $('profileDepartment').value = profile.department;
+    $('profileName').setCustomValidity('');
+    $('profileDepartment').setCustomValidity('');
+  }
+  $(id).hidden = false;
+  document.body.style.overflow = 'hidden';
+  $(id).querySelector('input, button').focus();
+}
+function closeAccountDialog() {
+  $('profileModal').hidden = true;
+  $('helpModal').hidden = true;
+  document.body.style.overflow = '';
+  accountDialogTrigger?.focus();
+}
+function saveProfile(event) {
+  event.preventDefault();
+  const name = $('profileName').value.trim();
+  const department = $('profileDepartment').value.trim();
+  $('profileName').setCustomValidity(name.length < 2 ? 'Nama tampilan minimal 2 karakter.' : '');
+  $('profileDepartment').setCustomValidity(department.length < 2 ? 'Unit kerja minimal 2 karakter.' : '');
+  if (!$('profileForm').reportValidity()) return;
+  try {
+    const updated = { name, department };
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updated));
+    profile = updated;
+    renderProfile();
+    closeAccountDialog();
+    toast('Profil disimpan', 'Nama tampilan dan unit kerja diperbarui di browser ini.');
+  } catch (error) {
+    console.error('Could not save profile:', error);
+    toast('Profil belum tersimpan', 'Penyimpanan browser tidak tersedia. Coba lagi setelah penyimpanan diizinkan.', 'error');
+  }
+}
+function showView({ focus = false } = {}) {
+  currentView = location.hash === '#inventory' ? 'inventory' : 'dashboard';
+  const dashboard = currentView === 'dashboard';
+  $('currentPage').textContent = dashboard ? 'Dashboard' : 'Data Inventaris';
+  $('pageTitle').innerHTML = dashboard ? 'Inventory overview<span>.</span>' : 'Data inventaris<span>.</span>';
+  $('pageDescription').textContent = dashboard ? 'Kelola dan pantau aset kampus dalam satu tempat.' : 'Cari, filter, dan kelola seluruh aset kampus.';
+  $('dashboardStats').hidden = !dashboard;
+  $('inventoryToolbar').hidden = dashboard;
+  $('viewAllLink').hidden = !dashboard;
+  $('inventoryTitle').textContent = dashboard ? 'Inventaris terbaru' : 'Daftar inventaris';
+  $('inventoryDescription').textContent = dashboard ? 'Lima barang terakhir yang ditambahkan.' : 'Seluruh data aset dan perlengkapan kampus.';
+  document.querySelectorAll('[data-view]').forEach(link => {
+    const active = link.dataset.view === currentView;
+    link.classList.toggle('active', active);
+    if (active) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+  closeAccountMenu();
+  $('sidebar').classList.remove('open');
+  render();
+  if (focus) {
+    window.scrollTo(0, 0);
+    $('pageTitle').focus({ preventScroll: true });
+  }
 }
 async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -85,20 +187,17 @@ function normalizeItems(payload) {
 async function loadItems({ quiet = false } = {}) {
   if (DEMO_MODE) {
     items = readDemoItems();
-    apiAvailable = false;
-    setConnection(false, 'Mode demo');
+    loadError = '';
     render();
     return;
   }
   try {
     const payload = await apiRequest('/items');
     items = normalizeItems(payload);
-    apiAvailable = true;
-    setConnection(true, 'API terhubung');
+    loadError = '';
     render();
   } catch (error) {
-    apiAvailable = false;
-    setConnection(false, 'API tidak tersedia');
+    loadError = error.message;
     renderErrorState(error.message);
     if (!quiet) toast('Koneksi gagal', `${error.message}. Periksa backend dan konfigurasi Nginx.`, 'error');
   }
@@ -119,6 +218,7 @@ function filteredItems() {
   });
 }
 function render() {
+  if (loadError) { renderErrorState(loadError); return; }
   const available = items.filter(item => item.status === 'available').length;
   const borrowed = items.filter(item => item.status === 'borrowed').length;
   const maintenance = items.filter(item => item.status === 'maintenance').length;
@@ -126,11 +226,13 @@ function render() {
   $('statAvailable').textContent = available.toLocaleString('id-ID');
   $('statBorrowed').textContent = borrowed.toLocaleString('id-ID');
   $('statMaintenance').textContent = maintenance.toLocaleString('id-ID');
-  const visible = filteredItems();
+  const visible = currentView === 'dashboard' ? items.slice(0, 5) : filteredItems();
   $('recordCount').textContent = `${visible.length} item`;
   $('tableSummary').textContent = `Menampilkan ${visible.length} dari ${items.length} jenis barang`;
   if (!visible.length) {
-    $('inventoryBody').innerHTML = `<tr><td colspan="7" class="empty-cell"><div class="empty-state"><strong>Barang tidak ditemukan</strong><span>Coba ubah kata kunci atau filter pencarian.</span></div></td></tr>`;
+    const title = items.length ? 'Barang tidak ditemukan' : 'Belum ada barang';
+    const message = items.length ? 'Coba ubah kata kunci atau filter pencarian.' : 'Klik Tambah barang untuk mencatat aset pertama.';
+    $('inventoryBody').innerHTML = `<tr><td colspan="7" class="empty-cell"><div class="empty-state"><strong>${title}</strong><span>${message}</span></div></td></tr>`;
     return;
   }
   $('inventoryBody').innerHTML = visible.map(item => {
@@ -268,7 +370,60 @@ $('cancelDelete').addEventListener('click', closeDelete);
 $('confirmDelete').addEventListener('click', deleteItem);
 $('confirmModal').addEventListener('click', event => { if (event.target === $('confirmModal')) closeDelete(); });
 $('mobileMenu').addEventListener('click', () => $('sidebar').classList.toggle('open'));
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') { if (!$('itemModal').hidden) closeForm(); if (!$('confirmModal').hidden) closeDelete(); $('sidebar').classList.remove('open'); }
+$('refreshItemsBtn').addEventListener('click', async () => {
+  $('refreshItemsBtn').disabled = true;
+  $('refreshItemsBtn').textContent = 'Memuat...';
+  try { await loadItems(); }
+  finally { $('refreshItemsBtn').disabled = false; $('refreshItemsBtn').textContent = 'Muat ulang'; }
 });
+document.querySelectorAll('[data-account-trigger]').forEach(button => {
+  button.addEventListener('click', () => toggleAccountMenu(button));
+});
+$('editProfileBtn').addEventListener('click', () => openAccountDialog('profileModal'));
+$('accountHelpBtn').addEventListener('click', () => openAccountDialog('helpModal'));
+$('sidebarHelpBtn').addEventListener('click', () => openAccountDialog('helpModal'));
+$('profileForm').addEventListener('submit', saveProfile);
+['profileName', 'profileDepartment'].forEach(id => {
+  $(id).addEventListener('input', () => $(id).setCustomValidity(''));
+});
+document.querySelectorAll('[data-close-account-dialog]').forEach(button => button.addEventListener('click', closeAccountDialog));
+['profileModal', 'helpModal'].forEach(id => {
+  $(id).addEventListener('click', event => { if (event.target === $(id)) closeAccountDialog(); });
+});
+$('helpInventoryBtn').addEventListener('click', () => {
+  closeAccountDialog();
+  location.hash = 'inventory';
+  showView({ focus: true });
+});
+document.addEventListener('click', event => {
+  if (!event.target.closest('[data-account-trigger], #accountMenu')) closeAccountMenu();
+});
+document.addEventListener('focusin', event => {
+  if (!$('accountMenu').hidden && !event.target.closest('[data-account-trigger], #accountMenu')) closeAccountMenu();
+});
+window.addEventListener('resize', () => closeAccountMenu());
+window.addEventListener('hashchange', () => showView({ focus: true }));
+document.querySelectorAll('[data-view], .brand').forEach(link => {
+  link.addEventListener('click', () => $('sidebar').classList.remove('open'));
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    if (!$('itemModal').hidden) closeForm();
+    if (!$('confirmModal').hidden) closeDelete();
+    if (!$('profileModal').hidden || !$('helpModal').hidden) closeAccountDialog();
+    if (!$('accountMenu').hidden) closeAccountMenu({ restoreFocus: true });
+    $('sidebar').classList.remove('open');
+  }
+  if (event.key === 'Tab') {
+    const dialog = document.querySelector('.modal-backdrop:not([hidden]) [role="dialog"], .confirm-backdrop:not([hidden]) [role="alertdialog"]');
+    if (!dialog) return;
+    const fields = [...dialog.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href]')];
+    const first = fields[0];
+    const last = fields[fields.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+});
+renderProfile();
+showView();
 loadItems();
