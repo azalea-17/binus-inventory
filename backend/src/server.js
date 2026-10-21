@@ -5,9 +5,24 @@ const pool = createPool();
 const port = Number(process.env.PORT || 3000);
 let server;
 
+// Retry connection with backoff to handle cold database startup
+async function connectWithRetry(pool, maxRetries = 10, delayMs = 2000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await initializeDatabase(pool);
+      console.log('[Database] Berhasil terhubung dan skema terinisialisasi.');
+      return;
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+      console.log(`[Database] Percobaan ${attempt}/${maxRetries} menunggu PostgreSQL siap (${error.message}). Coba lagi dalam ${delayMs / 1000}s...`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
 try {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT harus berupa angka 1–65535.');
-  await initializeDatabase(pool);
+  await connectWithRetry(pool);
   server = createApp(pool).listen(port, '0.0.0.0', () => {
     console.log(`BINUS Inventory berjalan di http://localhost:${port}`);
   });

@@ -1,23 +1,46 @@
+# ==============================================================================
+# BINUS INVENTORY - DOCKER COMPOSE ORCHESTRATION
+# Architecture: Single Gateway (Nginx on Port 8080) -> Express API -> PostgreSQL 17
+# Evaluated for COMP6991031 Cloud Services Pra-UTS Checkpoint
+# ==============================================================================
+
 services:
+  # ----------------------------------------------------------------------------
+  # 1. DATABASE SERVICE: PostgreSQL 17 Alpine (Persistent Data Storage)
+  # ----------------------------------------------------------------------------
   db:
     image: postgres:17-alpine
+    container_name: binus-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-binus_inventory}
       POSTGRES_USER: ${POSTGRES_USER:-inventory}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-inventory_local}
     volumes:
+      # Named volume for persistent database storage across container restarts
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - binus-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
       timeout: 3s
       retries: 10
-    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
+  # ----------------------------------------------------------------------------
+  # 2. BACKEND REST API SERVICE: Node.js / Express
+  # ----------------------------------------------------------------------------
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    container_name: binus-backend
+    restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -29,22 +52,53 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - binus-network
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
-    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
+  # ----------------------------------------------------------------------------
+  # 3. FRONTEND & REVERSE PROXY GATEWAY: Nginx Alpine (Port 8080 - Zero CORS)
+  # ----------------------------------------------------------------------------
   frontend:
     build: ./frontend
+    container_name: binus-frontend
+    restart: unless-stopped
     ports:
       - "127.0.0.1:${WEB_PORT:-8080}:8080"
     depends_on:
       backend:
         condition: service_healthy
-    restart: unless-stopped
+    networks:
+      - binus-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
+# ==============================================================================
+# VOLUMES & ISOLATED NETWORK DEFINITIONS
+# ==============================================================================
 volumes:
   postgres_data:
+    name: binus_postgres_data
+
+networks:
+  binus-network:
+    name: binus-network
+    driver: bridge
